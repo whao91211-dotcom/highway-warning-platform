@@ -40,9 +40,13 @@
     "@vben/styles": "workspace:*",
     "@vben/types": "workspace:*",
     "@vben/utils": "workspace:*",
+    "@vue-leaflet/vue-leaflet": "^0.10.1",
     "@vueuse/core": "catalog:",
     "ant-design-vue": "catalog:",
+    "coordtransform": "^2.1.2",
     "dayjs": "catalog:",
+    "leaflet": "^1.9.4",
+    "mqtt": "^5.15.1",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
