@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 import {
   LCircle,
@@ -8,6 +8,7 @@ import {
   LTileLayer,
 } from '@vue-leaflet/vue-leaflet';
 
+import { useAiAnalysis } from './composables/useAiAnalysis';
 import { useMockData } from './composables/useMockData';
 import { useMqtt } from './composables/useMqtt';
 import { useWarningAnimation } from './composables/useWarningAnimation';
@@ -17,6 +18,8 @@ import 'leaflet/dist/leaflet.css';
 const { connected, accidents, connect } = useMqtt();
 const { startMock, stopMock } = useMockData(accidents);
 const { animations, rearVehicles } = useWarningAnimation(accidents);
+const { streamText, aiStatus, levelClass, levelText, rescue, traffic, startAnalysis } =
+  useAiAnalysis();
 
 connect(import.meta.env.VITE_MQTT_BROKER || 'ws://127.0.0.1:9001');
 
@@ -26,6 +29,8 @@ const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const attribution = '© OpenStreetMap';
 const selected = ref(null);
 const mocking = ref(false);
+
+watch(selected, (acc) => startAnalysis(acc));
 
 function selectAccident(acc) {
   selected.value = acc;
@@ -168,6 +173,32 @@ function vehicleFillColor(v) {
           </div>
           <div class="detail-row">
             <span>触发时间</span><span>{{ formatTime(selected.timestamp) }}</span>
+          </div>
+        </div>
+
+        <!-- AI 研判面板 -->
+        <div v-if="selected" class="ai-panel">
+          <div class="card-title">🤖 AI 研判结果</div>
+
+          <div v-if="aiStatus === 'streaming'" class="ai-streaming">
+            <span class="ai-text">{{ streamText }}</span>
+            <span class="cursor-blink">|</span>
+          </div>
+
+          <div v-if="aiStatus === 'done'" class="ai-result">
+            <div class="ai-level" :class="levelClass">
+              {{ levelText }}
+            </div>
+            <div class="ai-detail">
+              <div class="ai-section">
+                <div class="ai-label">🚑 救援力量</div>
+                <div class="ai-value">{{ rescue }}</div>
+              </div>
+              <div class="ai-section">
+                <div class="ai-label">🚧 交通管制</div>
+                <div class="ai-value">{{ traffic }}</div>
+              </div>
+            </div>
           </div>
         </div>
         <div v-else class="no-select">点击地图上的事故点查看详情</div>
@@ -389,5 +420,89 @@ function vehicleFillColor(v) {
   margin-top: 2px;
   font-size: 11px;
   color: #546e7a;
+}
+
+/* AI 研判面板 */
+.ai-panel {
+  flex-shrink: 0;
+  padding: 12px;
+  border-bottom: 1px solid #1e3a5f;
+}
+
+.ai-streaming {
+  padding: 8px 10px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #69f0ae;
+  white-space: pre-wrap;
+  background: #0a111f;
+  border-radius: 4px;
+}
+
+.cursor-blink {
+  font-weight: bold;
+  color: #69f0ae;
+  animation: blink 0.6s infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.ai-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-level {
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 4px;
+}
+
+.ai-level.level-1 {
+  color: #ff5252;
+  background: #311b1b;
+  border: 1px solid #ff5252;
+}
+
+.ai-level.level-2 {
+  color: #ff9100;
+  background: #2d2413;
+  border: 1px solid #ff9100;
+}
+
+.ai-level.level-3 {
+  color: #ffeb3b;
+  background: #2d2a13;
+  border: 1px solid #f9a825;
+}
+
+.ai-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ai-section {
+  padding: 8px 10px;
+  background: #132340;
+  border-radius: 4px;
+}
+
+.ai-label {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: #78909c;
+}
+
+.ai-value {
+  font-size: 12px;
+  color: #e0e8f0;
 }
 </style>
