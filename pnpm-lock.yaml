@@ -712,6 +712,9 @@ importers:
       dayjs:
         specifier: 'catalog:'
         version: 1.11.20
+      echarts:
+        specifier: 'catalog:'
+        version: 6.0.0
       leaflet:
         specifier: ^1.9.4
         version: 1.9.4

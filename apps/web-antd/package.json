@@ -45,6 +45,7 @@
     "ant-design-vue": "catalog:",
     "coordtransform": "^2.1.2",
     "dayjs": "catalog:",
+    "echarts": "catalog:",
     "leaflet": "^1.9.4",
     "mqtt": "^5.15.1",
     "pinia": "catalog:",
