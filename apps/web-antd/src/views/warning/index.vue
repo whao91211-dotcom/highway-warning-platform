@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import {
   LCircle,
@@ -11,6 +11,7 @@ import {
 import { useAiAnalysis } from './composables/useAiAnalysis';
 import { useMockData } from './composables/useMockData';
 import { useMqtt } from './composables/useMqtt';
+import { useCoordTransform } from './composables/useCoordTransform';
 import { useWarningAnimation } from './composables/useWarningAnimation';
 
 import 'leaflet/dist/leaflet.css';
@@ -18,8 +19,16 @@ import 'leaflet/dist/leaflet.css';
 const { connected, accidents, connect } = useMqtt();
 const { startMock, stopMock } = useMockData(accidents);
 const { animations, rearVehicles } = useWarningAnimation(accidents);
-const { streamText, aiStatus, levelClass, levelText, rescue, traffic, startAnalysis } =
-  useAiAnalysis();
+const { wgs84ToGcj02, haversineDistance } = useCoordTransform();
+const {
+  streamText,
+  aiStatus,
+  levelClass,
+  levelText,
+  rescue,
+  traffic,
+  startAnalysis,
+} = useAiAnalysis();
 
 connect(import.meta.env.VITE_MQTT_BROKER || 'ws://127.0.0.1:9001');
 
@@ -28,6 +37,21 @@ const zoom = ref(11);
 const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const attribution = '© OpenStreetMap';
 const selected = ref(null);
+const gcj02Center = computed(() => {
+  if (!selected.value) return null;
+  return wgs84ToGcj02(selected.value.lat, selected.value.lng);
+});
+const offsetDistance = computed(() => {
+  if (!selected.value || !gcj02Center.value) return null;
+  return Math.round(
+    haversineDistance(
+      selected.value.lat,
+      selected.value.lng,
+      gcj02Center.value.lat,
+      gcj02Center.value.lng,
+    ),
+  );
+});
 const mocking = ref(false);
 
 watch(selected, (acc) => startAnalysis(acc));
@@ -102,14 +126,60 @@ function vehicleFillColor(v) {
             />
           </template>
 
-          <!-- 选中事故的5km预警范围圆 -->
-          <LCircle
+          <!-- 渐变影响区（GCJ-02 为中心） -->
+          <template v-if="selected && gcj02Center">
+            <LCircle
+              :lat-lng="[gcj02Center.lat, gcj02Center.lng]"
+              :radius="1500"
+              color="#ff1744"
+              :weight="1"
+              :fill-opacity="0.12"
+            />
+            <LCircle
+              :lat-lng="[gcj02Center.lat, gcj02Center.lng]"
+              :radius="3000"
+              color="#ff5252"
+              :weight="1"
+              :fill-opacity="0.08"
+            />
+            <LCircle
+              :lat-lng="[gcj02Center.lat, gcj02Center.lng]"
+              :radius="5000"
+              color="#ff8a80"
+              :weight="1"
+              :fill-opacity="0.04"
+            />
+          </template>
+
+          <!-- WGS-84 原始 GNSS 点（蓝色） -->
+          <LCircleMarker
             v-if="selected"
             :lat-lng="[selected.lat, selected.lng]"
-            :radius="5000"
-            color="#ff1744"
-            :weight="2"
-            :fill-opacity="0.08"
+            :radius="5"
+            color="#1565c0"
+            fill-color="#2196f3"
+            :fill-opacity="0.9"
+          />
+
+          <!-- GCJ-02 校正点（橙色） -->
+          <LCircleMarker
+            v-if="selected && gcj02Center"
+            :lat-lng="[gcj02Center.lat, gcj02Center.lng]"
+            :radius="7"
+            color="#e65100"
+            fill-color="#ff9100"
+            :fill-opacity="0.9"
+          />
+
+          <!-- ±3m 误差圈 -->
+          <LCircle
+            v-if="selected && gcj02Center"
+            :lat-lng="[gcj02Center.lat, gcj02Center.lng]"
+            :radius="3"
+            color="#ff9100"
+            :weight="1"
+            :fill-opacity="0.15"
+            :dash-array="'3 3'"
           />
 
           <!-- 预警扩散动画圆 -->
@@ -170,6 +240,13 @@ function vehicleFillColor(v) {
           </div>
           <div class="detail-row">
             <span>纬度</span><span>{{ selected.lat.toFixed(5) }}</span>
+          </div>
+          <div class="detail-row offset-row">
+            <span>坐标偏移 (WGS→GCJ)</span>
+            <span class="highlight">{{ offsetDistance }}m</span>
+          </div>
+          <div class="detail-row">
+            <span>定位精度</span><span class="safe">±3m</span>
           </div>
           <div class="detail-row">
             <span>触发时间</span><span>{{ formatTime(selected.timestamp) }}</span>
@@ -335,6 +412,10 @@ function vehicleFillColor(v) {
   color: #78909c;
 }
 
+.offset-row {
+  border-bottom: 1px dashed #1e3a5f;
+}
+
 .highlight {
   font-weight: bold;
   color: #ff9100;
@@ -447,8 +528,14 @@ function vehicleFillColor(v) {
 }
 
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
 }
 
 .ai-result {

@@ -167,10 +167,10 @@ function playWarningAnimation(accidentPoint) {
 
 对应负责的精确定位模块，在地图上可视化展示：
 
-- [ ] 原始 GNSS 点（WGS-84，蓝色小点）vs 地图匹配后点（GCJ-02，橙色大点）对比
-- [ ] ±3 米误差圈（极小半径圆，展示定位精度）
-- [ ] Haversine 计算的 5km 影响范围渐变色展示
-- [ ] 坐标转换工具函数完善（`coordtransform` 封装为 `useCoordTransform.js`）
+- [x] 原始 GNSS 点（WGS-84，蓝色小点）vs 地图匹配后点（GCJ-02，橙色大点）对比
+- [x] ±3 米误差圈（极小半径圆，展示定位精度）
+- [x] Haversine 计算的 5km 影响范围渐变色展示（3层同心圆渐变）
+- [x] 坐标转换工具函数完善（`coordtransform` 封装为 `useCoordTransform.js`）
 
 ---
 
@@ -195,7 +195,7 @@ apps/web-antd/src/
 │   │       ├── useMqtt.js            # ✅ MQTT 通信
 │   │       ├── useAiAnalysis.js       # ✅ AI 研判分析
 │   │       ├── useMockData.js        # ✅ Mock 数据模拟
-│   │       ├── useCoordTransform.js  # 🔲 坐标转换
+│   │       ├── useCoordTransform.js  # ✅ 坐标转换
 │   │       └── useWarningAnimation.js # ✅ 预警动画
 │   └── monitor/
 │       ├── index.vue                 # ✅ 系统监控看板
@@ -253,4 +253,4 @@ apps/web-antd/src/
 ---
 
 _文档生成时间：2026年4月25日_  
-_当前进度：基础框架完成，路由注册完成，预警动画完成，系统监控看板完成，AI 研判展示完成，进入阶段五开发_
+_当前进度：基础框架完成，路由注册完成，预警动画完成，系统监控看板完成，AI 研判展示完成，精确定位可视化完成，进入阶段六开发_
