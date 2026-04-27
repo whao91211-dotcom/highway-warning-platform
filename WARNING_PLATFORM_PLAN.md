@@ -26,7 +26,7 @@
 | 框架 | Vue 3 + Vite + TypeScript | vben-admin monorepo，应用在 `apps/web-antd` |
 | UI 组件 | Ant Design Vue | vben-admin 内置 |
 | 地图 | Leaflet + @vue-leaflet/vue-leaflet | 轻量，支持自定义图层 |
-| 地图瓦片 | OpenStreetMap（开发）/ 高德（生产） | 生产环境需处理 WGS84→GCJ02 坐标转换 |
+| 地图瓦片 | 高德地图 AutoNavi | 已切换，全链路 GCJ-02 坐标适配 |
 | 实时通信 | MQTT.js（WebSocket 接入） | 对接 Mosquitto broker，端口 9001 |
 | 数据可视化 | ECharts 5 | 延迟折线图、事故统计图 |
 | 坐标转换 | coordtransform | WGS-84 → GCJ-02 |
@@ -36,53 +36,148 @@
 
 ## 三、已完成工作
 
-### ✅ 环境搭建
+### ✅ 阶段一：路由与基础联调
 
-- 克隆 vue-vben-admin，清理 git 历史，初始化为独立项目
-- 安装业务依赖：`mqtt`、`leaflet`、`@vue-leaflet/vue-leaflet`、`coordtransform`
-- 创建 `.env.development`，配置 MQTT broker 地址和平台标题
-- 本地开发服务器正常运行（`localhost:5666`）
-
-### ✅ 核心文件创建
-
-以下文件已创建，位于 `apps/web-antd/src/views/warning/`：
-
-```
-views/warning/
-├── index.vue                    # 主页面：地图 + 右侧事故列表 + 详情卡片
-└── composables/
-    ├── useMqtt.js               # MQTT 连接管理，消息解析，事故数据维护
-    └── useMockData.js           # Mock 数据模拟器，每4秒生成一条模拟事故
-```
-
-**index.vue 已实现功能：**
-
-- 暗色主题布局（顶部状态栏 + 地图区 + 右侧面板）
-- MQTT 连接状态实时显示
-- 地图上橙色圆点标注事故位置
-- 点击事故点：地图聚焦 + 5km 预警范围圈展示
-- 右侧事故详情卡片（ΔV、动力类型、人数、翻滚状态、坐标、时间）
-- 右侧事故列表，支持点击联动地图
-- Mock 数据开关按钮，可独立于后端测试
-
-### ✅ 已完成（2026/4/25）
-
-- 路由注册 — 创建 `warning.ts`，修复 composables 目录和 import 别名
+- 在 `router/routes/modules/` 下新建 `warning.ts` 注册路由
+- glob 自动发现路由，左侧菜单添加"预警监控台"入口
 - 页面可通过 `/warning` 路径正常访问
+- MQTT topic 和 MSD payload 字段约定已文档化（后端联调待后续进行）
+
+### ✅ 阶段二：预警动画与虚拟车辆
+
+- 预警扩散动画：红色圆圈从事故点向外扩散至 5km
+- 后方虚拟车辆：在事故点后方生成若干虚拟车辆标注点
+- 车辆状态变化：未预警（蓝色）→ 收到预警（黄色闪烁）→ 已处理（绿色）
+- 动画与 MQTT 消息联动
+
+### ✅ 阶段三：系统监控看板
+
+新建页面 `views/monitor/index.vue` + composable `useMonitorData.js`：
+- 端到端延迟折线图（ECharts），标注 2000ms 设计目标线
+- 边缘节点状态卡片（在线状态、延迟、心跳）
+- 今日事故统计（总数、按小时分布柱状图、动力类型饼图）
+- 系统可用性指标（消息接收/丢失、丢包率）
+- ECharts 改用全量导入（`import * as echarts from 'echarts'`），解决 tree-shaking 致空白问题
+
+### ✅ 阶段四：AI 研判结果展示
+
+新建 composable `useAiAnalysis.js`：
+- 事故详情面板下方 AI 分析区域
+- 流式文字输出效果（逐字显示，模拟 DeepSeek 推理过程）
+- 结构化展示：事故等级（一级/二级/三级）、救援力量建议、交通管制方案
+- 本地规则兜底（当 AI 服务不可用时自动切换）
+
+### ✅ 阶段五：精确定位可视化
+
+新建 composable `useCoordTransform.js`：
+- WGS-84（蓝色小点）vs GCJ-02（橙色大点）对比标注
+- ±3m 误差圈展示定位精度
+- Haversine 距离计算，显示坐标偏移量
+- 5km 影响范围渐变色展示（三层同心圆）
+- coordtransform 库封装
+
+### ✅ 阶段六：UI 打磨与答辩准备（进行中）
+
+**已完成：**
+
+- **高德地图迁移**：瓦片从 OSM 切换为高德 `webrd{s}.is.autonavi.com`，所有事故标注/动画/虚拟车辆坐标转为 GCJ-02 以正确对齐
+- **品牌去 Vben 化**：
+  - 应用标题改为"高速公路二次事故智能预警平台"
+  - 删除原 Vben 演示页面路由（概览/演示/项目/关于），侧边栏仅保留预警监控台和系统监控看板
+  - 清理用户下拉菜单中的 Vben 文档/GitHub/问答链接
+  - 替换演示通知为项目相关内容
+- **投影仪适配**：全局字体放大 1-2px，侧边面板宽度 300→340px，图表高度增加
+- **顶栏美化**：渐变背景 + 彩色底边 + 脉冲状态动画 + 版本标签
+- **环境隔离**：`.env.development` 加入 `.gitignore`，根目录和 app 目录各司其职
+- **bug 修复**：
+  - 高德瓦片子域名格式错误致地图空白（`webrd0{s}` → `webrd{s}` + subdomains 参数）
+  - `defaultHomePath` 被 localStorage 旧缓存覆盖导致页面 404（加入 `updatePreferences` 显式覆写）
+
+**待完成：**
+
+- 录制演示视频（备用，防现场网络问题）
+- 打包验证（`pnpm build:antd`），部署到演示服务器
+
+### ✅ Git 仓库整理
+
+- master 分支压缩为 5 个里程碑提交，历史干净线性
+- 建立分支策略：`feat-stage6-optimization`（阶段六开发）、`fix/monitor-blank`（bug 修复）
+- 原完整历史保留在 `archive/full-history-backup`
 
 ---
 
 ## 四、待完成工作
 
-### 阶段一：路由与基础联调（优先级：🔴 最高）
+> 阶段一 ~ 阶段五已全部完成。阶段六 UI 打磨主体完成，剩余答辩准备。
 
-- [x] 在 `router/routes/modules/` 下新建 `warning.ts` 注册路由
-- [x] 在 `router/routes/index.ts` 中引入并挂载路由（glob 自动发现）
-- [x] 在左侧菜单中添加"预警监控台"导航入口
-- [x] 验证页面可通过 `/warning` 路径正常访问
-- [ ] 与后端确认 MQTT topic 命名规范和 MSD payload 字段格式
+### 阶段六：UI 打磨与答辩准备（优先级：🟢 中）
 
-**MQTT topic 约定（待与后端确认）：**
+- [x] 替换地图瓦片为高德（含 GCJ-02 坐标全链路适配）
+- [x] 品牌去 Vben 化（标题、菜单、下拉、通知）
+- [x] 响应式布局适配（答辩投影仪分辨率）
+- [x] 顶栏美化（渐变背景 + 动画 + 版本标签）
+- [x] 环境隔离配置（.env.development gitignore）
+- [x] Git 仓库规范化（里程碑压缩、分支策略）
+- [ ] 录制演示视频（备用，防现场网络问题）
+- [ ] 生产打包验证（`pnpm build:antd`）与部署
+
+### MQTT 后端联调（待后端正）
+
+| 事项                     | 状态      |
+| ------------------------ | --------- |
+| Mosquitto WebSocket 端口 | 🔲 待确认 |
+| MQTT topic 命名规范      | 🔲 待确认 |
+| MSD payload JSON 字段名  | 🔲 待确认 |
+| AI 分析结果推送方式      | 🔲 待确认 |
+| 边缘节点心跳格式         | 🔲 待确认 |
+| 演示服务器 IP            | 🔲 待确认 |
+
+---
+
+## 五、目录结构（当前状态）
+
+```
+apps/web-antd/src/
+├── views/
+│   ├── warning/
+│   │   ├── index.vue                    # ✅ 主监控台页面（高德瓦片 + GCJ-02）
+│   │   └── composables/
+│   │       ├── useMqtt.js               # ✅ MQTT 通信
+│   │       ├── useMockData.js           # ✅ Mock 数据模拟
+│   │       ├── useCoordTransform.js     # ✅ 坐标转换（WGS84↔GCJ02）
+│   │       ├── useWarningAnimation.js   # ✅ 预警扩散动画 + 虚拟车辆
+│   │       └── useAiAnalysis.js         # ✅ AI 流式研判
+│   └── monitor/
+│       ├── index.vue                    # ✅ 系统监控看板
+│       └── composables/
+│           └── useMonitorData.js        # ✅ 监控数据模拟
+├── router/routes/modules/
+│   ├── warning.ts                       # ✅ 预警监控台路由
+│   ├── monitor.ts                       # ✅ 系统监控看板路由
+│   └── profile.ts                       # ✅ 个人中心路由（隐藏菜单）
+├── layouts/
+│   └── basic.vue                        # ✅ 已清理 Vben 品牌残留
+├── main.ts                              # ✅ 强制覆写缓存配置
+├── preferences.ts                       # ✅ defaultHomePath 覆盖
+├── .env                                 # ✅ 应用标题
+├── .env.development                     # ✅ 开发环境变量（gitignored）
+└── .env.production                      # ✅ 生产环境变量
+```
+
+---
+
+## 六、与后端的接口约定（待联调）
+
+| 事项                     | 状态      | 说明                           |
+| ------------------------ | --------- | ------------------------------ |
+| Mosquitto WebSocket 端口 | 🔲 待确认 | 前端需要 ws:// 接入，默认 9001 |
+| MQTT topic 命名规范      | 🔲 待确认 | 见下方约定草案                 |
+| MSD payload JSON 字段名  | 🔲 待确认 | 需与 `useMqtt.js` 中字段名对齐 |
+| AI 分析结果推送方式      | 🔲 待确认 | MQTT 流式 or HTTP SSE          |
+| 边缘节点心跳格式         | 🔲 待确认 | 节点ID、延迟、状态字段         |
+| 演示服务器 IP            | 🔲 待确认 | 用于 `.env.production` 配置    |
+
+**MQTT topic 约定草案：**
 
 ```
 accident/{vehicleId}/msd       # 事故 MSD 原始数据
@@ -91,7 +186,7 @@ edge/{nodeId}/status           # 边缘节点心跳状态
 ai/{accidentId}/analysis       # DeepSeek 研判结果（流式）
 ```
 
-**MSD payload 字段约定（待确认）：**
+**MSD payload 字段约定草案：**
 
 ```json
 {
@@ -108,149 +203,34 @@ ai/{accidentId}/analysis       # DeepSeek 研判结果（流式）
 
 ---
 
-### 阶段二：预警动画（优先级：🟡 高）
-
-- [x] 实现预警扩散动画：事故触发后，红色圆圈从事故点向外扩散至 5km
-- [x] 模拟后方车辆：在事故点后方生成若干虚拟车辆标注点
-- [x] 车辆状态变化动画：未预警（蓝色）→ 收到预警（黄色闪烁）→ 已处理（绿色）
-- [x] 动画与 MQTT 消息联动（收到真实消息时自动触发）
-
-**实现思路：**
-
-```javascript
-// 用 setInterval 模拟扩散，每帧扩大半径
-function playWarningAnimation(accidentPoint) {
-  let radius = 0;
-  const timer = setInterval(() => {
-    radius += 150;
-    updateCircle(radius);
-    markWarnedCars(accidentPoint, radius);
-    if (radius >= 5000) clearInterval(timer);
-  }, 50);
-}
-```
-
----
-
-### 阶段三：系统监控看板（优先级：🟡 高）
-
-新建页面 `views/monitor/index.vue`，展示：
-
-- [x] **端到端延迟折线图**（ECharts）：实时显示每条消息的延迟，标注 2000ms 设计目标线
-- [x] **边缘节点状态卡片**：节点 ID、在线状态、最近心跳时间、本地响应延迟（≤50ms）
-- [x] **今日事故统计**：总数、按小时分布柱状图、动力类型饼图
-- [x] **系统可用性指标**：MQTT 连接时长、消息接收总数、丢包率
-
----
-
-### 阶段四：AI 研判结果展示（优先级：🟢 中）
-
-- [x] 在事故详情面板下方添加 AI 分析区域
-- [x] 支持流式文字输出效果（逐字显示，模拟 DeepSeek 推理过程）
-- [x] 结构化展示：事故等级、救援力量建议、交通管制方案
-- [x] 本地规则兜底显示（当 AI 服务不可用时）
-
-**实现说明：**
-
-- 新建 `composables/useAiAnalysis.js`：本地规则引擎 + 流式文字模拟
-  - 事故等级判定：ΔV ≥ 60g/翻滚/人数 ≥ 3 → 一级，ΔV ≥ 30g/电动 → 二级，其余 → 三级
-  - 救援与管制方案按等级自动生成
-  - 流式输出：1.5s 延迟后逐字显示，30ms/字，约 5-8 秒完成
-- 在 `index.vue` 事故详情卡片下方新增 AI 研判面板
-  - 流式终端风格文本框 + 闪烁光标
-  - 完成后展示等级标签（红/橙/黄三色）、救援力量、交通管制
-- 通过 `watch(selected)` 自动触发分析
-
----
-
-### 阶段五：精确定位可视化（优先级：🟢 中）
-
-对应负责的精确定位模块，在地图上可视化展示：
-
-- [x] 原始 GNSS 点（WGS-84，蓝色小点）vs 地图匹配后点（GCJ-02，橙色大点）对比
-- [x] ±3 米误差圈（极小半径圆，展示定位精度）
-- [x] Haversine 计算的 5km 影响范围渐变色展示（3层同心圆渐变）
-- [x] 坐标转换工具函数完善（`coordtransform` 封装为 `useCoordTransform.js`）
-
----
-
-### 阶段六：UI 打磨与答辩准备（优先级：🟢 中）
-
-- [ ] 替换地图瓦片为高德（生产环境，坐标转换已就绪后）
-- [ ] 添加平台 Logo 和标题美化
-- [ ] 响应式布局适配（答辩投影仪分辨率适配）
-- [ ] 录制演示视频（备用，防现场网络问题）
-- [ ] 打包为静态文件（`pnpm build`），部署到演示服务器
-
----
-
-## 五、目录结构规划
-
-```
-apps/web-antd/src/
-├── views/
-│   ├── warning/
-│   │   ├── index.vue                 # ✅ 主监控台页面
-│   │   └── composables/
-│   │       ├── useMqtt.js            # ✅ MQTT 通信
-│   │       ├── useAiAnalysis.js       # ✅ AI 研判分析
-│   │       ├── useMockData.js        # ✅ Mock 数据模拟
-│   │       ├── useCoordTransform.js  # ✅ 坐标转换
-│   │       └── useWarningAnimation.js # ✅ 预警动画
-│   └── monitor/
-│       ├── index.vue                 # ✅ 系统监控看板
-│       └── composables/
-│           └── useMonitorData.js     # ✅ 监控数据模拟
-├── router/
-│   └── routes/
-│       └── modules/
-│           └── warning.ts            # ✅ 路由注册
-└── .env.development                  # ✅ 环境变量
-```
-
----
-
-## 六、与后端的接口约定清单
-
-在开始联调前需与后端团队确认：
-
-| 事项                     | 状态      | 说明                           |
-| ------------------------ | --------- | ------------------------------ |
-| Mosquitto WebSocket 端口 | 🔲 待确认 | 前端需要 ws:// 接入，默认 9001 |
-| MQTT topic 命名规范      | 🔲 待确认 | 见阶段一约定草案               |
-| MSD payload JSON 字段名  | 🔲 待确认 | 需与 `useMqtt.js` 中字段名对齐 |
-| AI 分析结果推送方式      | 🔲 待确认 | MQTT 流式 or HTTP SSE          |
-| 边缘节点心跳格式         | 🔲 待确认 | 节点ID、延迟、状态字段         |
-| 演示服务器 IP            | 🔲 待确认 | 用于 `.env.production` 配置    |
-
----
-
 ## 七、工作量估算
 
 | 模块                | 估计工时   | 状态      |
 | ------------------- | ---------- | --------- |
 | 环境搭建 + 基础页面 | 1.5天      | ✅ 完成   |
 | 路由注册 + 页面接入 | 0.5天      | ✅ 完成   |
-| MQTT 后端联调       | 1天        | 🔲 待开始 |
 | 预警动画            | 1天        | ✅ 完成   |
 | 系统监控看板        | 0.5天      | ✅ 完成   |
-| AI 研判展示         | 0.5天      | 🔲 待开始 |
-| 精确定位可视化      | 0.5天      | 🔲 待开始 |
-| UI 打磨 + 答辩准备  | 1天        | 🔲 待开始 |
+| AI 研判展示         | 0.5天      | ✅ 完成   |
+| 精确定位可视化      | 0.5天      | ✅ 完成   |
+| UI 打磨 + 答辩准备  | 1天        | ✅ 主体完成 |
+| MQTT 后端联调       | 1天        | 🔲 待后端 |
 | **合计**            | **~6.5天** |           |
 
 ---
 
-## 八、Claude Code 使用建议
+## 八、开发环境备忘
 
-在本地 Claude Code 中继续开发时，建议按以下方式提问：
-
-- **完成路由注册**：「帮我查看 `router/routes/index.ts` 内容，然后把 warning 路由注册进去」
-- **实现预警动画**：「在 `useWarningAnimation.js` 中实现5km预警扩散动画，用 Leaflet Circle 实现」
-- **接入真实MQTT**：「后端 broker 地址是 ws://xxx，topic 格式是 xxx，帮我更新 useMqtt.js」
-- **调试问题**：直接把报错信息粘贴给 Claude Code，它可以直接读取和修改本地文件
+- 开发服务器：`pnpm dev:antd`（端口自动分配，默认 5666）
+- 生产构建：`pnpm build:antd`
+- 类型检查：`pnpm check:type`
+- 单元测试：`pnpm test:unit`
+- 代码规范：`pnpm lint` / `pnpm format`
+- 交互式提交：`czg`（Angular 风格 commit message）
+- 项目配置详见 `CLAUDE.md`
 
 ---
 
 _文档生成时间：2026年4月25日_  
-_当前进度：基础框架完成，路由注册完成，预警动画完成，系统监控看板完成，AI 研判展示完成，精确定位可视化完成，进入阶段六开发_
+_最后更新：2026年4月27日_  
+_当前进度：阶段一～五全部完成，阶段六主体完成（高德迁移、品牌清理、Git 规范化），剩余演示视频录制和生产部署验证_
