@@ -1,4 +1,4 @@
-import { initPreferences } from '@vben/preferences';
+import { initPreferences, preferencesManager } from '@vben/preferences';
 import { unmountGlobalLoading } from '@vben/utils';
 
 import { overridesPreferences, preferencesExtension } from './preferences';
@@ -18,6 +18,11 @@ async function initApplication() {
     extension: preferencesExtension,
     namespace,
     overrides: overridesPreferences,
+  });
+
+  // 强制覆盖关键配置，避免旧缓存覆盖新设置导致 404
+  preferencesManager.updatePreferences({
+    app: { defaultHomePath: overridesPreferences.app?.defaultHomePath },
   });
 
   // 启动应用并挂载

@@ -18,6 +18,7 @@ interface WebAntdPreferencesExtension {
 export const overridesPreferences = defineOverridesPreferences({
   // overrides
   app: {
+    defaultHomePath: '/warning',
     name: import.meta.env.VITE_APP_TITLE,
   },
 });

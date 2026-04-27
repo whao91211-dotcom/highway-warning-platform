@@ -5,9 +5,7 @@ import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { AuthenticationLoginExpiredModal } from '@vben/common-ui';
-import { VBEN_DOC_URL, VBEN_GITHUB_URL } from '@vben/constants';
 import { useWatermark } from '@vben/hooks';
-import { BookOpenText, CircleHelp, SvgGithubIcon } from '@vben/icons';
 import {
   BasicLayout,
   LockScreen,
@@ -16,7 +14,6 @@ import {
 } from '@vben/layouts';
 import { preferences } from '@vben/preferences';
 import { useAccessStore, useUserStore } from '@vben/stores';
-import { openWindow } from '@vben/utils';
 
 import { $t } from '#/locales';
 import { useAuthStore } from '#/store';
@@ -25,53 +22,27 @@ import LoginForm from '#/views/_core/authentication/login.vue';
 const notifications = ref<NotificationItem[]>([
   {
     id: 1,
-    avatar: 'https://avatar.vercel.sh/vercel.svg?text=VB',
+    avatar: 'https://avatar.vercel.sh/vercel.svg?text=YB',
     date: '3小时前',
     isRead: true,
-    message: '描述信息描述信息描述信息',
-    title: '收到了 14 份新周报',
+    message: '系统各项指标运行正常，边缘节点全部在线',
+    title: '系统运行正常',
   },
   {
     id: 2,
     avatar: 'https://avatar.vercel.sh/1',
     date: '刚刚',
     isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '朱偏右 回复了你',
+    message: '哈大高速 K5+200 路段发生事故，已自动推送预警信息',
+    title: '新事故预警触发',
   },
   {
     id: 3,
     avatar: 'https://avatar.vercel.sh/1',
-    date: '2024-01-01',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '曲丽丽 评论了你',
-  },
-  {
-    id: 4,
-    avatar: 'https://avatar.vercel.sh/satori',
     date: '1天前',
     isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '代办提醒',
-  },
-  {
-    id: 5,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '跳转Workspace示例',
-    link: '/workspace',
-  },
-  {
-    id: 6,
-    avatar: 'https://avatar.vercel.sh/satori',
-    date: '1天前',
-    isRead: false,
-    message: '描述信息描述信息描述信息',
-    title: '跳转外部链接示例',
-    link: 'https://doc.vben.pro',
+    message: '新版 AI 研判模型已部署，事故等级识别准确率提升至 94.7%',
+    title: 'AI 模型更新',
   },
 ]);
 
@@ -91,33 +62,6 @@ const menus = computed(() => [
     },
     icon: 'lucide:user',
     text: $t('page.auth.profile'),
-  },
-  {
-    handler: () => {
-      openWindow(VBEN_DOC_URL, {
-        target: '_blank',
-      });
-    },
-    icon: BookOpenText,
-    text: $t('ui.widgets.document'),
-  },
-  {
-    handler: () => {
-      openWindow(VBEN_GITHUB_URL, {
-        target: '_blank',
-      });
-    },
-    icon: SvgGithubIcon,
-    text: 'GitHub',
-  },
-  {
-    handler: () => {
-      openWindow(`${VBEN_GITHUB_URL}/issues`, {
-        target: '_blank',
-      });
-    },
-    icon: CircleHelp,
-    text: $t('ui.widgets.qa'),
   },
 ]);
 
@@ -204,8 +148,7 @@ watch(
         :avatar
         :menus
         :text="userStore.userInfo?.realName"
-        description="ann.vben@gmail.com"
-        tag-text="Pro"
+        tag-text="Admin"
         @logout="handleLogout"
       />
     </template>
