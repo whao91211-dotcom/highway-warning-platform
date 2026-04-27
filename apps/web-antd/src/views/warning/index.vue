@@ -9,9 +9,9 @@ import {
 } from '@vue-leaflet/vue-leaflet';
 
 import { useAiAnalysis } from './composables/useAiAnalysis';
+import { useCoordTransform } from './composables/useCoordTransform';
 import { useMockData } from './composables/useMockData';
 import { useMqtt } from './composables/useMqtt';
-import { useCoordTransform } from './composables/useCoordTransform';
 import { useWarningAnimation } from './composables/useWarningAnimation';
 
 import 'leaflet/dist/leaflet.css';
@@ -32,10 +32,15 @@ const {
 
 connect(import.meta.env.VITE_MQTT_BROKER || 'ws://127.0.0.1:9001');
 
-const mapCenter = ref([45.75, 126.65]);
+// 高德地图瓦片（GCJ-02 坐标系）
+const tileUrl =
+  'https://webrd{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}';
+const tileSubdomains = ['01', '02', '03', '04'];
+const attribution = '© 高德地图 AutoNavi';
+
+const defaultGcj = wgs84ToGcj02(45.75, 126.65);
+const mapCenter = ref([defaultGcj.lat, defaultGcj.lng]);
 const zoom = ref(11);
-const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const attribution = '© OpenStreetMap';
 const selected = ref(null);
 const gcj02Center = computed(() => {
   if (!selected.value) return null;
@@ -54,11 +59,20 @@ const offsetDistance = computed(() => {
 });
 const mocking = ref(false);
 
+// 所有事故标注转为 GCJ-02 用于高德地图正确显示
+const displayAccidents = computed(() =>
+  accidents.value.map((acc) => {
+    const gcj = wgs84ToGcj02(acc.lat, acc.lng);
+    return { ...acc, displayLat: gcj.lat, displayLng: gcj.lng };
+  }),
+);
+
 watch(selected, (acc) => startAnalysis(acc));
 
 function selectAccident(acc) {
   selected.value = acc;
-  mapCenter.value = [acc.lat, acc.lng];
+  const gcj = wgs84ToGcj02(acc.lat, acc.lng);
+  mapCenter.value = [gcj.lat, gcj.lng];
   zoom.value = 13;
 }
 
@@ -100,6 +114,7 @@ function vehicleFillColor(v) {
       <button class="mock-btn" @click="toggleMock">
         {{ mocking ? '⏹ 停止模拟' : '▶ 开始模拟' }}
       </button>
+      <span class="version-tag">v1.0 答辩演示</span>
     </div>
 
     <!-- 主体布局 -->
@@ -112,12 +127,16 @@ function vehicleFillColor(v) {
           style="width: 100%; height: 100%"
           @ready="onMapReady"
         >
-          <LTileLayer :url="tileUrl" :attribution="attribution" />
+          <LTileLayer
+            :url="tileUrl"
+            :subdomains="tileSubdomains"
+            :attribution="attribution"
+          />
 
-          <!-- 事故标注点 -->
-          <template v-for="acc in accidents" :key="acc.id">
+          <!-- 事故标注点（GCJ-02 坐标，高德地图正确对齐） -->
+          <template v-for="acc in displayAccidents" :key="acc.id">
             <LCircleMarker
-              :lat-lng="[acc.lat, acc.lng]"
+              :lat-lng="[acc.displayLat, acc.displayLng]"
               :radius="8"
               :color="acc.id === selected?.id ? '#ff1744' : '#ff6d00'"
               :fill-color="acc.id === selected?.id ? '#ff1744' : '#ff9100'"
@@ -179,7 +198,7 @@ function vehicleFillColor(v) {
             color="#ff9100"
             :weight="1"
             :fill-opacity="0.15"
-            :dash-array="'3 3'"
+            dash-array="3 3"
           />
 
           <!-- 预警扩散动画圆 -->
@@ -324,16 +343,18 @@ function vehicleFillColor(v) {
   flex-shrink: 0;
   gap: 16px;
   align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  background: #0d1f3c;
-  border-bottom: 1px solid #1e3a5f;
+  height: 50px;
+  padding: 0 20px;
+  background: linear-gradient(135deg, #0d1f3c 0%, #112240 100%);
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, #4fc3f7, #1565c0, #69f0ae) 1;
 }
 
 .title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: bold;
   color: #4fc3f7;
+  letter-spacing: 0.5px;
 }
 
 .status {
@@ -342,6 +363,18 @@ function vehicleFillColor(v) {
 
 .online {
   color: #69f0ae;
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .offline {
@@ -368,6 +401,15 @@ function vehicleFillColor(v) {
   background: #1976d2;
 }
 
+.version-tag {
+  padding: 2px 10px;
+  font-size: 11px;
+  color: #69f0ae;
+  background: rgb(105 240 174 / 10%);
+  border: 1px solid rgb(105 240 174 / 30%);
+  border-radius: 10px;
+}
+
 .main-body {
   display: flex;
   flex: 1;
@@ -382,7 +424,7 @@ function vehicleFillColor(v) {
 .side-panel {
   display: flex;
   flex-direction: column;
-  width: 300px;
+  width: 340px;
   overflow: hidden;
   background: #0d1f3c;
   border-left: 1px solid #1e3a5f;
@@ -396,15 +438,16 @@ function vehicleFillColor(v) {
 
 .card-title {
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   color: #4fc3f7;
 }
 
 .detail-row {
   display: flex;
   justify-content: space-between;
-  padding: 3px 0;
-  font-size: 12px;
+  padding: 4px 0;
+  font-size: 13px;
   border-bottom: 1px solid #132340;
 }
 
@@ -431,7 +474,7 @@ function vehicleFillColor(v) {
 
 .no-select {
   padding: 16px 12px;
-  font-size: 12px;
+  font-size: 13px;
   color: #546e7a;
   border-bottom: 1px solid #1e3a5f;
 }
@@ -439,7 +482,8 @@ function vehicleFillColor(v) {
 .list-title {
   flex-shrink: 0;
   padding: 10px 12px 6px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   color: #4fc3f7;
 }
 
@@ -472,13 +516,13 @@ function vehicleFillColor(v) {
 }
 
 .item-id {
-  font-size: 11px;
+  font-size: 12px;
   color: #ff8a65;
 }
 
 .item-type {
   padding: 1px 6px;
-  font-size: 11px;
+  font-size: 12px;
   border-radius: 3px;
 }
 
@@ -493,13 +537,13 @@ function vehicleFillColor(v) {
 }
 
 .item-info {
-  font-size: 12px;
+  font-size: 13px;
   color: #b0bec5;
 }
 
 .item-time {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 12px;
   color: #546e7a;
 }
 
@@ -513,7 +557,7 @@ function vehicleFillColor(v) {
 .ai-streaming {
   padding: 8px 10px;
   font-family: 'Courier New', monospace;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.7;
   color: #69f0ae;
   white-space: pre-wrap;
@@ -584,12 +628,12 @@ function vehicleFillColor(v) {
 
 .ai-label {
   margin-bottom: 4px;
-  font-size: 12px;
+  font-size: 13px;
   color: #78909c;
 }
 
 .ai-value {
-  font-size: 12px;
+  font-size: 13px;
   color: #e0e8f0;
 }
 </style>

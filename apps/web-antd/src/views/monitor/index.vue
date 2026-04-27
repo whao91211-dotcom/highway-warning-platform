@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, onUnmounted, watch } from 'vue';
+
 import * as echarts from 'echarts';
 
 import { useMonitorData } from './composables/useMonitorData';
@@ -183,6 +184,7 @@ onUnmounted(() => {
       <span class="title">📊 系统监控看板</span>
       <span class="status online">● MQTT 已连接</span>
       <span class="uptime">运行时长：{{ systemMetrics.uptime }}</span>
+      <span class="version-tag">v1.0 答辩演示</span>
     </div>
 
     <div class="main-body">
@@ -192,10 +194,10 @@ onUnmounted(() => {
           <div class="stat-label">平均端到端延迟</div>
           <div class="stat-value delay">
             {{
-              delaySeries.value.length > 0
+              delaySeries.length > 0
                 ? Math.round(
-                    delaySeries.value.reduce((s, d) => s + d.value, 0) /
-                      delaySeries.value.length,
+                    delaySeries.reduce((s, d) => s + d.value, 0) /
+                      delaySeries.length,
                   )
                 : 0
             }}
@@ -293,30 +295,53 @@ onUnmounted(() => {
   flex-shrink: 0;
   gap: 16px;
   align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  background: #0d1f3c;
-  border-bottom: 1px solid #1e3a5f;
+  height: 50px;
+  padding: 0 20px;
+  background: linear-gradient(135deg, #0d1f3c 0%, #112240 100%);
+  border-bottom: 2px solid;
+  border-image: linear-gradient(90deg, #4fc3f7, #1565c0, #69f0ae) 1;
 }
 
 .title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: bold;
   color: #4fc3f7;
+  letter-spacing: 0.5px;
 }
 
 .status {
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .online {
   color: #69f0ae;
+  animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .uptime {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 13px;
   color: #78909c;
+}
+
+.version-tag {
+  padding: 2px 10px;
+  font-size: 11px;
+  color: #69f0ae;
+  background: rgb(105 240 174 / 10%);
+  border: 1px solid rgb(105 240 174 / 30%);
+  border-radius: 10px;
 }
 
 .main-body {
@@ -344,12 +369,12 @@ onUnmounted(() => {
 
 .stat-label {
   margin-bottom: 6px;
-  font-size: 12px;
+  font-size: 13px;
   color: #78909c;
 }
 
 .stat-value {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
 }
 
@@ -370,13 +395,13 @@ onUnmounted(() => {
 }
 
 .stat-unit {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: normal;
 }
 
 .stat-sub {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 12px;
   color: #546e7a;
 }
 
@@ -390,13 +415,14 @@ onUnmounted(() => {
 
 .chart-title {
   margin-bottom: 8px;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   color: #4fc3f7;
 }
 
 .chart-box {
   width: 100%;
-  height: 220px;
+  height: 250px;
 }
 
 .chart-row {
@@ -406,7 +432,7 @@ onUnmounted(() => {
 }
 
 .chart-card.half .chart-box {
-  height: 200px;
+  height: 230px;
 }
 
 /* 边缘节点列表 */
@@ -420,21 +446,21 @@ onUnmounted(() => {
   display: flex;
   gap: 12px;
   align-items: center;
-  padding: 8px 12px;
-  font-size: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
   background: #132340;
   border-radius: 4px;
 }
 
 .node-id {
-  min-width: 60px;
+  min-width: 70px;
   font-weight: bold;
   color: #4fc3f7;
 }
 
 .node-dot {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
