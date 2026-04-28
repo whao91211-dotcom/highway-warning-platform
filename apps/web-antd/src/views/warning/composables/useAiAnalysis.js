@@ -35,7 +35,9 @@ function localRule(accident) {
     `> ΔV: ${deltaV}g | ${powerLabel} | ${occupants}人 | ${rolloverLabel}`,
     `> 匹配事故案例库...`,
     `> 综合判定：${levelText}事故`,
-    powerType === '电动' ? `> 电动车型，电池包需检查` : `> 燃油车型，注意燃油泄漏`,
+    powerType === '电动'
+      ? `> 电动车型，电池包需检查`
+      : `> 燃油车型，注意燃油泄漏`,
     rollover ? `> 车辆已翻滚，人员伤亡风险高` : null,
     occupants >= 3 ? `> 车内人数较多，需增派救援力量` : null,
     `> 建议派遣 ${rescueMap[level]}`,
@@ -45,7 +47,13 @@ function localRule(accident) {
     .filter(Boolean)
     .join('\n');
 
-  return { level, levelText, rescue: rescueMap[level], traffic: trafficMap[level], reasonText };
+  return {
+    level,
+    levelText,
+    rescue: rescueMap[level],
+    traffic: trafficMap[level],
+    reasonText,
+  };
 }
 
 async function callAiApi(accident) {
@@ -99,8 +107,8 @@ export function useAiAnalysis() {
       const data = await callAiApi(accident);
       fullText = `> 连接成功，接收分析结果...\n${data.rawAnalysis}`;
       result = data;
-    } catch (err) {
-      console.warn('AI API 不可用，切换至本地规则引擎:', err.message);
+    } catch (error) {
+      console.warn('AI API 不可用，切换至本地规则引擎:', error.message);
       const local = localRule(accident);
       fullText = `> 远端 AI 不可用，切换至本地规则引擎\n${local.reasonText}`;
       result = local;
@@ -131,5 +139,13 @@ export function useAiAnalysis() {
     clearInterval(streamTimer);
   });
 
-  return { streamText, aiStatus, levelClass, levelText, rescue, traffic, startAnalysis };
+  return {
+    streamText,
+    aiStatus,
+    levelClass,
+    levelText,
+    rescue,
+    traffic,
+    startAnalysis,
+  };
 }
