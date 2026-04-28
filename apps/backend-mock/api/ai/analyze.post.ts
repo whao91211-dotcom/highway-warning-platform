@@ -25,7 +25,9 @@ function buildPrompt(accident: any) {
 
 function parseAiResponse(content: string) {
   const extract = (label: string) => {
-    const match = content.match(new RegExp(String.raw`【${label}】([\s\S]*?)(?=【|$)`));
+    const match = content.match(
+      new RegExp(String.raw`【${label}】([\s\S]*?)(?=【|$)`),
+    );
     return match?.[1]?.trim() || '';
   };
 

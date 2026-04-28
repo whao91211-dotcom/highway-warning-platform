@@ -29,10 +29,6 @@ Run a single test: `pnpm vitest run --dom path/to/test.test.ts`
 ```
 apps/
   web-antd/          ← **Primary app** (Ant Design Vue 4, the customized application)
-  web-ele/           Element Plus variant
-  web-naive/         Naive UI variant
-  web-tdesign/       TDesign variant
-  web-antdv-next/    Ant Design Vue Next variant
   backend-mock/      Nitro-based mock API server
 
 packages/
