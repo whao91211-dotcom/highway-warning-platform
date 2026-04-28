@@ -48,9 +48,28 @@ function localRule(accident) {
   return { level, levelText, rescue: rescueMap[level], traffic: trafficMap[level], reasonText };
 }
 
+async function callAiApi(accident) {
+  const response = await fetch('/api/ai/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accident }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const json = await response.json();
+  if (json.code !== 0) {
+    throw new Error(json.message || 'API error');
+  }
+
+  return json.data;
+}
+
 export function useAiAnalysis() {
   const streamText = ref('');
-  const aiStatus = ref('idle'); // 'idle' | 'streaming' | 'done'
+  const aiStatus = ref('idle');
   const levelClass = ref('');
   const levelText = ref('');
   const rescue = ref('');
@@ -59,7 +78,7 @@ export function useAiAnalysis() {
 
   let streamTimer = null;
 
-  function startAnalysis(accident) {
+  async function startAnalysis(accident) {
     if (!accident) return;
     if (currentId.value === accident.id && aiStatus.value !== 'idle') return;
 
@@ -67,34 +86,44 @@ export function useAiAnalysis() {
     clearInterval(streamTimer);
     currentId.value = accident.id;
     aiStatus.value = 'streaming';
-    streamText.value = '';
+    streamText.value = '> 正在连接 AI 分析服务...';
     levelClass.value = '';
     levelText.value = '';
     rescue.value = '';
     traffic.value = '';
 
-    const result = localRule(accident);
-    const fullText = result.reasonText;
+    let fullText;
+    let result;
+
+    try {
+      const data = await callAiApi(accident);
+      fullText = `> 连接成功，接收分析结果...\n${data.rawAnalysis}`;
+      result = data;
+    } catch (err) {
+      console.warn('AI API 不可用，切换至本地规则引擎:', err.message);
+      const local = localRule(accident);
+      fullText = `> 远端 AI 不可用，切换至本地规则引擎\n${local.reasonText}`;
+      result = local;
+    }
+
+    streamText.value = '';
     let charIndex = 0;
 
-    // 1.5s delay before streaming
-    streamTimer = setTimeout(() => {
-      streamTimer = setInterval(() => {
-        charIndex++;
-        streamText.value = fullText.slice(0, charIndex);
+    streamTimer = setInterval(() => {
+      charIndex++;
+      streamText.value = fullText.slice(0, charIndex);
 
-        if (charIndex >= fullText.length) {
-          clearInterval(streamTimer);
-          setTimeout(() => {
-            aiStatus.value = 'done';
-            levelClass.value = `level-${result.level}`;
-            levelText.value = result.levelText;
-            rescue.value = result.rescue;
-            traffic.value = result.traffic;
-          }, 300);
-        }
-      }, 30);
-    }, 1500);
+      if (charIndex >= fullText.length) {
+        clearInterval(streamTimer);
+        setTimeout(() => {
+          aiStatus.value = 'done';
+          levelClass.value = `level-${result.level}`;
+          levelText.value = result.levelText;
+          rescue.value = result.rescue;
+          traffic.value = result.traffic;
+        }, 300);
+      }
+    }, 25);
   }
 
   onUnmounted(() => {
