@@ -47,7 +47,7 @@
     "dayjs": "catalog:",
     "echarts": "catalog:",
     "leaflet": "^1.9.4",
-    "mqtt": "^5.15.1",
+    "mqtt": "^5.15.2",
     "pinia": "catalog:",
     "vue": "catalog:",
     "vue-router": "catalog:"
